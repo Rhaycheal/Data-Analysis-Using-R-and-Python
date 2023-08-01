@@ -1,0 +1,171 @@
+---
+title: "PREDICTING INFLATION RATE IN NIGERIA"
+author: "ADEDAYO KAYODE PETER"
+date: "2023-03-03"
+output:
+  word_document: default
+  pdf_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(dplyr)
+library(readr)
+library(readxl)
+library(ggplot2)
+library(tidyr)
+```
+
+```{r}
+df = read_excel("my_data.xlsx")
+head(df)
+str(df)
+summary(df)
+```
+
+NORMALIZING THE DATAFRAME 
+```{r}
+#define Min-Max normalization function
+min_max_norm <- function(x) {
+    (x - min(x)) / (max(x) - min(x))
+  }
+
+#apply Min-Max normalization to the second, third, fourth and fifth columns in the dataframe
+df_norm <- as.data.frame(lapply(df[2:6], min_max_norm))
+
+#view first six rows of normalized dataset
+head(df_norm)
+```
+BOXPLOT OF VARIABLES
+```{r}
+# Convert the dataframe to long format
+df_long <- tidyr::pivot_longer(df_norm, everything(), names_to = "Variable", values_to = "Value")
+
+# Create the boxplot subplot
+ggplot(df_long, aes(x = Variable, y = Value)) +
+  geom_boxplot() +
+  labs(x = "Variable", y = "Value") +
+  theme_minimal() +
+  facet_wrap(~ Variable, scales = "free") +
+  ggtitle("BOXPLOT OF VARIABLES") # Create a subplot for each variable
+```
+
+INVESTIGATING THE RELATIONSHIPS BETWEEN VARIABLES IN THE MODEL
+```{r}
+
+cor_matrix <- cor(df %>% select(inflation_rate, GDP, 
+                                interest_rate, foreign_investment), 
+                  use = "pairwise.complete.obs")
+cor_df <- as.data.frame(cor_matrix)
+
+# Add row names (variable names)
+cor_df$var <- rownames(cor_df)
+rownames(cor_df) <- NULL
+
+# Convert the data frame from wide to long format
+cor_long <- tidyr::gather(cor_df, "var2", "correlation", -var)
+
+# Create a heatmap using ggplot
+ggplot(cor_long, aes(var, var2, fill = correlation)) +
+  geom_tile() +
+  scale_fill_gradient2(low = "blue", mid = "white", high = "red", midpoint = 0) +
+  theme_minimal() +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5, hjust = 1)) +
+  ggtitle("CORRELATION MATRIX") +
+  geom_text(aes(label = round(correlation, 2)), color = "black", size = 3, show.legend = FALSE)
+```
+1. High correlation between fuel price and exchange rate in the country
+2. High correlation between fuel price and unemployment rate(73%), and with GDP (84%)
+3. Exchange rate is also highly correlated with unemployment rate.
+4. Inflation rate has a  negative correlation of 49% with GDP and 83% with interest rate
+
+
+LINEARITY ASSUMPTION
+```{r}
+library(gridExtra)
+
+# Create individual scatter plots with lines of best fit
+plot1 <- ggplot(df) +
+  geom_point(aes(inflation_rate, GDP)) +
+  geom_smooth(aes(inflation_rate, GDP), method = "lm", se = FALSE, color = "red") +
+  labs(x = "Inflation Rate", y = "GDP")
+
+plot2 <- ggplot(df) +
+  geom_point(aes(exchange_rate, GDP)) +
+  geom_smooth(aes(exchange_rate, GDP), method = "lm", se = FALSE, color = "red") +
+  labs(x = "Exchange Rate", y = "GDP")
+
+plot3 <- ggplot(df) +
+  geom_point(aes(interest_rate, GDP)) +
+  geom_smooth(aes(interest_rate, GDP), method = "lm", se = FALSE, color = "red") +
+  labs(x = "Interest Rate", y = "GDP")
+
+plot4 <- ggplot(df) +
+  geom_point(aes(foreign_investment, GDP)) +
+  geom_smooth(aes(foreign_investment, GDP), method = "lm", se = FALSE, color = "red") +
+  labs(x = "Foreign_investment", y = "GDP")
+
+# Arrange the subplots in a grid layout
+grid.arrange(plot1, plot2, plot3, plot4, ncol = 2)
+```
+
+MULTIPLE REGRESSION MODEL TO DETERMINE INFLATION RATE
+
+```{r}
+model <- lm(GDP ~ inflation_rate +interest_rate + exchange_rate + foreign_investment,
+            data = df_norm)
+summary(model)
+
+hist(residuals(model), col = "steelblue")
+```
+
+
+THE SUMMARY OF THE MODEL
+Multiple R is also the square root of R-squared, which is the proportion of the variance in the response variable that can be explained by the predictor variables. In this example, the multiple R-squared is 0.3676. This indicates that 36.76% of the variance in Inflation rate can be explained by the predictors in the model. Hence this model performed fairly. To further improve the prediction power of or regression model we will find another predictor variable that will better predict inflation rate.
+TESTING MULTICOLLINEARITY USING VIF
+```{r}
+library(car)
+vif(model)
+```
+Since each of the VIF values for the predictor variables (GDP) in the model are close to 1, multicollinearity for GDP is not a problem in the model. But for extremely high values like FUEL_PRICE and PRICE_INDEX. The quickest fix in this case is to remove one or more of the highly correlated variables which is the price of fuel and price index even if it increases the R squared. To further increase the R square of the model, better predictor variables should be added to the dataframe and also to avoid multicollinearity 
+
+
+```{r}
+plot(model)
+```
+CHECKING THE ASSUMPTION OFTHE MODEL
+1. The model residual should be approximately normal. This can be visually accessed by plotting an histogram of the residuals
+2. The variance of the residuals should be consistent for all observations.
+This preferred condition is known as homoscedasticity. Violation of this assumption is known as heteroscedasticity.To check if this assumption is met we can create a fitted value vs. residual plot
+
+
+Ideally we would like the residuals to be equally scattered at every fitted value. 
+```{r}
+hist(residuals(model), col = "steelblue")
+
+#create fitted value vs residual plot
+plot(fitted(model), residuals(model))
+
+#add horizontal line at 0
+abline(h = 0, lty = 2)
+```
+
+
+THE RESIDUAL PLOT
+
+A good way to visualize the variance of the data is to use a residual plot. Before we start creating residual plots let's first answer the following questions:
+
+What is a residual?
+The difference between the observed value (Y) and the predicted value (𝑌̂ ) is called the residual (or error). When we look at a regression plot, the residual is the distance from the data point to the fitted regression line.
+
+What is a residual plot?
+A residual plot is a graph that shows the residuals on the vertical y-axis and the independent variable on the horizontal x-axis.
+What do we pay attention to when looking at a residual plot?
+
+Homoscedasticity: If the residual plot is homoscedastic, then the points in the plot are randomly spread out around the x-axis, which means that a linear model is appropriate for the data. This is because randomly spread out residuals means that the variance is constant, and thus the linear model is a good fit for this data.
+
+
+
+

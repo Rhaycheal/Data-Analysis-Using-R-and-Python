@@ -1,0 +1,88 @@
+---
+title: "Temi's analysis"
+author: "Alalade Esther"
+date: "2023-07-03"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(readxl)
+library(fpp2)
+library(tseries)
+```
+```{r}
+df = read_excel("Esther_data.xlsx")
+head(df)
+summary(df)
+str(df)
+```
+```{r}
+#Transform to a time series object specifying the start date, end date and frequency
+df_ts = ts(df$Exchange_rate, start = c(2001, 12), end = c(2023, 6), 
+           frequency = 12)
+plot.ts(df_ts, main = "TIME PLOT OF EXCHANGE RATE USD TO NAIRA FROM 2001 TO 2023")
+```
+```{r}
+#decomposing the time series data showing the trend, sesonality and residual components using additive rule
+decom_df = decompose(df_ts, type = "additive")
+
+observed_series = df_ts - decom_df$trend - decom_df$seasonal - decom_df$random
+plot(decom_df$seasonal, main = "SERIES SEASONAL COMPONENT")
+plot(decom_df$random, main = "SERIES RESIDUAL COMPONENT")
+plot(decom_df$trend, main = "TREND COMPONENT OF THE SERIES")
+plot(observed_series, main = "OBSERVED SERIES")
+#since the ts data has a trend and seasonal component, we suspect that the data is not stationary
+```
+```{r}
+#using the formal test to check for stationarity
+#to check if series is stationary using the adf test
+adf.test(df_ts)
+#since the p value is greater than 0.05, the data is confirmed to not be stationary up to lag order of 6
+```
+```{r}
+#take the difference to make the data set stationary
+df_ds = diff(df_ts, differences = 2)
+adf.test(df_ds)
+```
+
+```{r}
+acf(df_ds, main = "AUTOCORRELATION FUNCTION OF EXCHANGE RATE USD TO NAIRA SERIES")
+pacf(df_ds, main = "PARTIAL AUTOCORRELATION FUNCTION OF EXCHANGE RATE USD TO NAIRA SERIES")
+```
+
+```{r}
+#since stationarity has being confirmed, we go further to fit the best arima model by using the auto arima function to determine the best combination of (p,d,q) and (P,D,Q)
+auto.arima(df_ts)
+```
+from the result obtained p = 0, d = 2 and q = 2
+```{r}
+#create the model
+arima_model = arima(df_ts, order = c(0, 2, 2))
+arima_model
+```
+```{r}
+#DIAGNOSTIC CHECK FOR ARIMA MODEL
+#To check for correlation between the residuals
+et = residuals(arima_model)
+acf(et)
+#since the spikes are not crossing the blue lines(boundary) from lag 1 to 5, presence of autocorrelation in the resudual is not detected
+#the residuals have zero mean
+plot.ts(et)
+
+#the residuals are normally distributed
+gghistogram(et)
+```
+```{r}
+arima_forecast = forecast(arima_model, h = 18)
+arima_forecast
+plot(arima_forecast, main = "PLOT OF ARIMA FORECAST VALUES")
+```
+```{r}
+accuracy(arima_model)
+```
+
