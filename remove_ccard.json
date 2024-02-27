@@ -1,0 +1,27 @@
+[
+    {
+        "First Name": "Bradley",
+        "Last Name": "Thompson",
+        "Age (Years)": 30,
+        "Marital Status": "married or civil partner",
+        "Distance Commuted to Work (miles)": 11.68,
+        "Employer Company": "Ashton, Tucker and Davies",
+        "Dependants": 1,
+        "Yearly Pension (GBP)": 0,
+        "Sex": "Male",
+        "Retired": "FALSE",
+        "Yearly Salary (GBP)": 42838,
+        "Address Street": "Studio 58D Hill dam",
+        "Address City": "West Owenview",
+        "Address Postcode": "B48 1FB",
+        "Credit Card Start Date": "14-Aug",
+        "Credit Card Expiry Date": "04/32",
+        "Credit Card CVV": 401,
+        "Credit Card Number": 4547050000000000.0,
+        "Bank IBAN": "GB44HFCB98336374626479",
+        "Vehicle Make": "Freightliner",
+        "Vehicle Model": "Nautilus",
+        "Vehicle Type": "Wagon, Convertible",
+        "Vehicle Year": 2011
+    }
+]
